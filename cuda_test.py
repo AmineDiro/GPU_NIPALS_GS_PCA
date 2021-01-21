@@ -6,7 +6,7 @@ import pycuda.gpuarray as gpuarray
 import numpy as np
 
 
-N=1000
+N=100
 BLOCKSIZE = 256
 
 
