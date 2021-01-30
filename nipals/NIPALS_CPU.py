@@ -10,7 +10,7 @@ import logging
 
 class Nipals():
 
-    def __init__(self, ncomp=None, tol=0.0001, maxiter=100):
+    def __init__(self, ncomp=None, tol=0.00001, maxiter=500):
         self.tol = tol
         self.maxiter = maxiter
         self.ncomp = ncomp
