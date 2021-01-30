@@ -7,7 +7,7 @@ setup(name='pca_gpu',
       description='Implementation of Nipals and GC PCA on GPU',
       author='Amine Wissal',
       license='MIT',
-      packages=['tinygrad'],
+      packages=['nipals'],
       classifiers=[
           "Programming Language :: Python :: 3",
           "License :: OSI Approved :: MIT License"

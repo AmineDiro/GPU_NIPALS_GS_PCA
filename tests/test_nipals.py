@@ -9,7 +9,6 @@ import numpy.testing as npt
 #sys.path.insert(
 #    0, '/Users/dihroussi/Google Drive/Documents/ENSAE/GPU/Projet GPU')
 
-
 class TestNipals(unittest.TestCase):
 
     def test_pca(self):
@@ -58,6 +57,6 @@ class TestNipals(unittest.TestCase):
     #     with self.assertRaises(TypeError):
     #         s.split(2)
 
-
 if __name__ == '__main__':
     unittest.main()
+
