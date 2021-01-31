@@ -6,12 +6,12 @@ import pycuda.gpuarray as gpuarray
 import numpy as np
 
 
-N=100
+N = 100
 BLOCKSIZE = 256
 
 
-blockDim  = (BLOCKSIZE, 1, 1)
-gridDim   = (N// BLOCKSIZE +1, 1, 1)
+blockDim = (BLOCKSIZE, 1, 1)
+gridDim = (N // BLOCKSIZE + 1, 1, 1)
 
 
 a = np.random.randn(N).astype(np.float32)
@@ -33,6 +33,7 @@ mod = SourceModule("""
   """)
 prog = mod.get_function("add")
 
-prog(a_gpu, b_gpu,c_gpu, np.uint32(N),block=blockDim,grid=gridDim)
+prog(a_gpu, b_gpu, c_gpu, np.uint32(N),
+     block=blockDim, grid=gridDim)
 
 print(c_gpu.get())

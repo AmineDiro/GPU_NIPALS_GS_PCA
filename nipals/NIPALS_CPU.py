@@ -8,7 +8,7 @@ import logging
 # TODO : Write tests
 
 
-class Nipals():
+class Nipals_cpu():
 
     def __init__(self, ncomp=None, tol=0.00001, maxiter=500):
         self.tol = tol
@@ -27,23 +27,24 @@ class Nipals():
         X = X / X_std
         return X.T
 
-    def onestepcomp(self, X):
+    def onestepcomp(self, X, comp):
         # TODO : Check for missing values
         # Choose the column of X with highest variance
         xvar = np.nanvar(X, axis=0, ddof=1)
-        startcol_use = np.where(xvar == xvar.max())[0][0]
-        th = X[:, startcol_use]
+        #startcol_use = np.where(xvar == xvar.max())[0][0]
+        #th = X[:, startcol_use]
+
+        th = X[:,comp]
 
         it = 0
         while True:
             # loadings
-            ph = X.T.dot(th) / np.sum(th*th)
+            ph = X.T.dot(th) 
             # Normalize
             ph = ph / np.sqrt(np.sum(ph*ph))
-
-            # Scores
+            # Scores update
             th_old = th
-            th = X.dot(ph) / sum(ph*ph)
+            th = X.dot(ph) 
 
             # Check convergence
             if np.sum((th-th_old)**2) < self.tol:
@@ -52,8 +53,8 @@ class Nipals():
             if it >= self.maxiter:
                 raise RuntimeError(
                     "Convergence not reached in {} iterations".format(self.maxiter))
-
-        return th, ph
+        eigh = np.sqrt(np.sum(th*th))
+        return th, ph ,eigh
 
     def fit(self, X, startcol=None):
         """
@@ -91,16 +92,15 @@ class Nipals():
 
         for comp in range(ncomp):
             # Calculate on full matrix
-            th, ph = self.onestepcomp(self.X_PCA)
+            th, ph, eigh = self.onestepcomp(self.X_PCA,comp)
             # Update X
             self.X_PCA = self.X_PCA - np.outer(th, ph)
             loadings[:, comp] = ph
             scores[:, comp] = th
-            eig[comp] = np.nansum(th*th)
+            eig[comp] = eigh
 
         # Finalize eigenvalues and subtract from scores
-        self.eig = pd.Series(np.sqrt(eig))
-
+        self.eig = pd.Series(eig)
         # Convert results to DataFrames
         # pd.DataFrame(scores, index=self.X.index, columns=["PC{}".format(i+1) for i in range(ncomp)])
         self.scores = scores
@@ -126,3 +126,4 @@ class Nipals():
         """
         self.fit(X,startcol=startcol)
         return self.transform()
+
