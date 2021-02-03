@@ -12,8 +12,10 @@ The purpose is to implement the paper :[link](https://arxiv.org/abs/0811.1081) o
 
 ## Install requirements
 
-## Todo list 
-- Implement CPu GS-PCA
-- Writee Unitary tests
+## Todo Amine 
+- Implement CPU NIPALS-PCA => OK
+- Write Unitary tests vs sklearn  PCA  => OK
 - Implement GPU NIPALS-PCA
-- Implement GPU GS-PCA
+    - Implemented onstep compt => BUG MATRIX MULT 
+    - Implement for loop
+- Test CPU vs GPU nipals
