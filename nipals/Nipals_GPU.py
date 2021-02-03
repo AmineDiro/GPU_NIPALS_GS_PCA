@@ -38,10 +38,10 @@ mult_transpose_gpu = mult_transpose.get_function("mult_transpose")
 
 
 def multiply_transpose(X_gpu, th_gpu, ph_gpu):
-    
+
     block_size = (min(N, 1024), 1, 1)
     grid_size = (int(np.ceil(N / block_size[0])), 1, 1)
-    
+
     mult_transpose_gpu(X_gpu, th_gpu, ph_gpu, block=block_size, grid=grid_size)
     return ph_gpu.get()
 
@@ -101,7 +101,7 @@ mult = SourceModule("""
      // Write the value to the subvector Tsub
      T[row] = sum;
 }
-"""% {"size": N})
+""" % {"size": N})
 
 mult_gpu = mult.get_function("mult")
 
@@ -144,20 +144,32 @@ if __name__ == '__main__':
     eigh_gpu = gpuarray.to_gpu(eigh)
 
     ########## One Comp step GPU ##########
-    eig_cpu, th_cpu, ph_cpu = onecomp_cpu(X, th, ph)
-    print('CPU eigenvalue', eig_cpu)
+    eig = 0
+    max_iter = 100
+    tol = 1e-2
+    for j in range(max_iter):
+        eig_cpu, th_cpu, ph_cpu = onecomp_cpu(X, th, ph)
+        if(np.abs(eig_cpu-eig) < tol):
+            break
+        eig = eig_cpu
+
+    print('CPU eigenvalue', eig)
 
     ########## One Comp step GPU ##########
     # Multiply X.T * th
-    ph = multiply_transpose(X_gpu, th_gpu, ph_gpu)
-
-    # Normalize ph/ ||ph||
-    ph = normalize_vector(ph_gpu)
-
-    # Multiply X * ph
-    th = multipy(X_gpu, ph_gpu, th_gpu)
-
-    # Compute eigenvalue
-    eigh = get_eigenvalue(th_gpu, eigh_gpu)
+    max_iter = 100
+    tol = 1e-2
+    eig = 0
+    for j in range(max_iter):
+        ph = multiply_transpose(X_gpu, th_gpu, ph_gpu)
+        # Normalize ph/ ||ph||
+        ph = normalize_vector(ph_gpu)
+        # Multiply X * ph
+        th = multipy(X_gpu, ph_gpu, th_gpu)
+        # Compute eigenvalue
+        eigh = get_eigenvalue(th_gpu, eigh_gpu)
+        if(np.abs(eigh - eig) < tol):
+            break
+        eig = eigh
 
     print('GPU eigenvalue', eigh)
