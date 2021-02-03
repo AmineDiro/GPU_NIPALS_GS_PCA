@@ -35,11 +35,9 @@ mult = SourceModule("""
     {
     
     // Block row and column
-    int blockRow = blockIdx.y;
-    int blockCol = blockIdx.x;
+    int blockRow = blockIdx.x;
+    int blockCol = blockIdx.y;
 
-    // Vecteur result 
-    float *Tsub = GetSubVector(T, blockIdx.x);
 
     // Each thread gives one element of  Tsub
     // Then adds it to Tvalue    

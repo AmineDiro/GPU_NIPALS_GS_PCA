@@ -7,42 +7,41 @@ import numpy as np
 
 # GLOBAL VARIABLES
 K = 2
-M = 10
-N = 10
+M = 100
+N = 2000
 
 # Multiply X.T * th
 mult_transpose = SourceModule("""
-    #define M %(size)d
-    __global__ void mult_transpose(float *X, float *th, float *ph){
-        int a_idx = blockIdx.x + threadIdx.x * gridDim.x;
-        
-        __shared__ float temp[M]; 
-        temp[threadIdx.x] =  X[a_idx] * th[threadIdx.x];
-         
-        __syncthreads();
-        
-         if (0 == threadIdx.x){ 
-            float sum = 0;
-            for (int i = 0; i < M; i++){
-                sum += temp[i];
-            }
-            ph[blockIdx.x]= sum;
-        }
+     #define M %(size_M)d
+     #define N %(size_N)d
+    
+    __global__ void mult_transpose(float *X, float *T ,  float *P)
+    {
+    
+    // Block row and column
+    int row = blockIdx.x*blockDim.x + threadIdx.x;
+    
+    float sum = 0;
+    for (int m= 0; m < M; ++m) 
+    {
+        sum += X[row + m*N]*T[m];
+    }
+     
+     // Write the value to the subvector Tsub
+     P[row] = sum;
 
     }
-    """ % {"size": M})
+    """ % {"size_M": M, "size_N": N})
+
 
 mult_transpose_gpu = mult_transpose.get_function("mult_transpose")
 
 
 def multiply_transpose(X_gpu, th_gpu, ph_gpu):
-    # TODO : define GridSize with some smart shit and reduce the Block size to 32x32
-    if M < 1024:
-        block_size = (M, 1, 1)
-        grid_size = (N, 1, 1)
-    else:
-        pass
-        # Raise error
+    
+    block_size = (min(N, 1024), 1, 1)
+    grid_size = (int(np.ceil(N / block_size[0])), 1, 1)
+    
     mult_transpose_gpu(X_gpu, th_gpu, ph_gpu, block=block_size, grid=grid_size)
     return ph_gpu.get()
 
@@ -82,32 +81,35 @@ def normalize_vector(ph_gpu):
 # Multiply X * ph
 #th_old_gpu = th_gpu.copy()
 mult = SourceModule("""
-    #define N %(size)d
-    __global__ void mult(float *X,float *ph, float *th){                
-        int idx = threadIdx.x + blockDim.x*blockIdx.x;
-        
-         __shared__ float temp[N]; 
-        temp[threadIdx.x] =  X[idx] * ph[threadIdx.x];
-         
-        __syncthreads();
-        
-         if (0 == threadIdx.x){ 
-            float sum = 0;
-            for (int i = 0; i < N; i++){
-                sum += temp[i];
-            }
-            th[blockIdx.x]= sum;
-        }
 
+    #include <math.h>
+    #define N %(size)d
+
+    
+    __global__ void mult(float *X, float *P, float *T)
+    {
+    
+    // Block row and column
+    int row = blockIdx.x*blockDim.x + threadIdx.x;
+    
+    float sum = 0;
+    for (int n = 0; n < N; ++n) 
+    {
+        sum += X[row*N + n]*P[n];
     }
-    """ % {"size": N})
+     
+     // Write the value to the subvector Tsub
+     T[row] = sum;
+}
+"""% {"size": N})
 
 mult_gpu = mult.get_function("mult")
 
 
 def multipy(X_gpu, ph_gpu, th_gpu):
-    mult_gpu(X_gpu, ph_gpu, th_gpu, block=(N, 1, 1), grid=(M, 1, 1))
-    
+    block_size = (min(M, 1024), 1, 1)
+    grid_size = (int(np.ceil(M / block_size[0])), 1, 1)
+    mult_gpu(X_gpu, ph_gpu, th_gpu, block=block_size, grid=grid_size)
     return th_gpu.get()
 
 
