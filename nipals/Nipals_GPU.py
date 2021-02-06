@@ -5,10 +5,6 @@ import pycuda.gpuarray as gpuarray
 from pycuda import cumath
 import numpy as np
 
-# GLOBAL VARIABLES
-K = 2
-M = 100
-N = 2000
 
 # Multiply X.T * th
 mult_transpose = SourceModule("""
@@ -131,45 +127,101 @@ def onecomp_cpu(X, th, ph):
     return eig_cpu, th_cpu, ph_cpu
 
 
-if __name__ == '__main__':
-    X = np.random.randn(M, N).astype(np.float32)
-    # Initiliaze with the kth column of X
-    th = X[:, K]
-    ph = np.zeros((N,)).astype(np.float32)
-    eigh = np.zeros((1,)).astype(np.float32)
 
-    X_gpu = gpuarray.to_gpu(X)
-    th_gpu = gpuarray.to_gpu(th)
-    ph_gpu = gpuarray.to_gpu(ph)
-    eigh_gpu = gpuarray.to_gpu(eigh)
 
-    ########## One Comp step GPU ##########
-    eig = 0
-    max_iter = 100
-    tol = 1e-2
-    for j in range(max_iter):
-        eig_cpu, th_cpu, ph_cpu = onecomp_cpu(X, th, ph)
-        if(np.abs(eig_cpu-eig) < tol):
-            break
-        eig = eig_cpu
+class Nipals_GPU():
+    def __init__(self, ncomp=None, tol=1e-2, maxiter=100):
+        self.tol = tol
+        self.maxiter = maxiter
+        self.ncomp = ncomp
+    
+    @staticmethod
+    def normalize(X):
+        X_mean = np.mean(X, axis=0)
+        X_std = np.std(X, axis=0, ddof=1)
+        X = X - X_mean
+        X = X / X_std
+        return X.T
 
-    print('CPU eigenvalue', eig)
+    def onestepcomp_gpu(self, X_gpu, comp,N):
+        # get comp row
+        th = X[:, comp]
+        ph = np.zeros((N,)).astype(np.float32)
+        eigh = np.zeros((1,)).astype(np.float32)
 
-    ########## One Comp step GPU ##########
-    # Multiply X.T * th
-    max_iter = 100
-    tol = 1e-2
-    eig = 0
-    for j in range(max_iter):
-        ph = multiply_transpose(X_gpu, th_gpu, ph_gpu)
-        # Normalize ph/ ||ph||
-        ph = normalize_vector(ph_gpu)
-        # Multiply X * ph
-        th = multipy(X_gpu, ph_gpu, th_gpu)
-        # Compute eigenvalue
-        eigh = get_eigenvalue(th_gpu, eigh_gpu)
-        if(np.abs(eigh - eig) < tol):
-            break
-        eig = eigh
+        th_gpu = gpuarray.to_gpu(th)
+        ph_gpu = gpuarray.to_gpu(ph)
+        eigh_gpu = gpuarray.to_gpu(eigh)
+        eig = 0
 
-    print('GPU eigenvalue', eigh)
+        for j in range(max_iter):
+            ph = multiply_transpose(X_gpu, th_gpu, ph_gpu)
+            # Normalize ph/ ||ph||
+            ph = normalize_vector(ph_gpu)
+            # Multiply X * ph
+            th = multipy(X_gpu, ph_gpu, th_gpu)
+            # Compute eigenvalue
+            eigh = get_eigenvalue(th_gpu, eigh_gpu)
+            if(np.abs(eigh - eig) < tol):
+                break
+            eig = eigh
+        
+        print('GPU eigenvalue', eigh)
+        return th, ph, eigh
+
+    def fit_on_GPU(self, X):
+        """
+        fit method
+        -------
+        parametres 
+
+        output
+        ------
+        """
+        M, N = X.shape
+        self.X = X.astype('float')
+
+        # mov to GPU , 
+        # TODO : on GPU
+        self.normalized_X = self.normalize(self.X)
+
+        self.X_PCA = self.normalized_X
+        # print('X input shape (N x M) :', self.X.shape)
+        # print('X_pca shape (M x N) :', self.X_PCA.shape)
+        self.X_GPU = gpuarray.to_gpu(self.X_PCA)
+
+        nr, nc = self.X_GP.shape
+        if self.ncomp is None:
+            ncomp = min(self.X.shape)
+        else:
+            try:
+                assert self.ncomp <= min(
+                    nr, nc), "can't will set this to{}".format(min(X.shape))
+                ncomp = self.ncomp
+            except AssertionError as msg:
+                print(msg)
+                ncomp = min(self.X.shape)
+
+        # initialize outputs
+        eig = np.empty((ncomp,))
+        loadings = np.empty((nc, ncomp))
+        scores = np.empty((nr, ncomp))
+
+        for comp in range(ncomp):
+            # Calculate on full matrix
+            th, ph, eigh = self.onestepcomp(self.X_PCA, comp)
+            # Update X
+            self.X_PCA = self.X_PCA - np.outer(th, ph)
+            loadings[:, comp] = ph
+            scores[:, comp] = th
+            eig[comp] = eigh
+
+        # Finalize eigenvalues and subtract from scores
+        self.eig = pd.Series(eig)
+        # Convert results to DataFrames
+        # pd.DataFrame(scores, index=self.X.index, columns=["PC{}".format(i+1) for i in range(ncomp)])
+        self.scores = scores
+        # pd.DataFrame(loadings, index=self.X.columns, columns=["PC{}".format(i+1) for i in range(ncomp)])
+        self.loadings = loadings
+
+        return True

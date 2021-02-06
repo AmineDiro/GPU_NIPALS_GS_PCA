@@ -8,7 +8,7 @@ import logging
 # TODO : Write tests
 
 
-class Nipals_cpu():
+class Nipals_CPU():
 
     def __init__(self, ncomp=None, tol=0.00001, maxiter=500):
         self.tol = tol
@@ -67,8 +67,10 @@ class Nipals_cpu():
         """
         nr, nc = X.shape
         self.X = X.astype('float')
+        
         # Save for  later
         self.normalized_X = self.normalize(self.X)
+        
         self.X_PCA = self.normalized_X
         # print('X input shape (N x M) :', self.X.shape)
         # print('X_pca shape (M x N) :', self.X_PCA.shape)
