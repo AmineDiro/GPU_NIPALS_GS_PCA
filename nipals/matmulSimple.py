@@ -8,7 +8,6 @@ from pycuda import cumath
 import numpy as np
 
 
-
 # mult = SourceModule("""
 
 #      # include <math.h>
@@ -60,8 +59,8 @@ import numpy as np
 
 # # Multiply X.T * th
 # mult_transpose = SourceModule("""
-#      # define M 5 
-#      # define N  7 
+#      # define M 5
+#      # define N  7
 
 #     __global__ void mult_transpose(float *X, float *T ,  float *P)
 #     {
@@ -102,67 +101,61 @@ import numpy as np
 ############################################################################################
 
 M = 100
-N = 100000
+N = 1000
 # Multiply th @ ph.T  ( Mx1 * 1xN)
-outer_mult = SourceModule("""
-    #include <stdio.h>
-       
-    # define M %(size_M)d
-    # define N %(size_N)d
-
-    __global__ void outer_mult(float *X, float *T ,  float *P)
-    {
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
-
-    // Block row and column
-    int row = by*blockDim.y + ty;
-    int col = bx*blockDim.x + tx;
-
-    //int dim = gridDim.x*blockDim.x;
-    if (row < M && col < N){
-        int idx = row*N + col ;
-        X[idx] = P[col];//T[row]*P[col];
-    }
 
 
-    }
-    """% {"size_M": M, "size_N": N})
+def update(X_gpu, th_gpu, ph_gpu):
+    outer_mult = SourceModule("""
+        #include <stdio.h>
+        
+        # define M %(size_M)d
+        # define N %(size_N)d
 
-outer = outer_mult.get_function("outer_mult")
+        __global__ void outer_mult(float *X, float *T ,  float *P)
+        {
+        int bx = blockIdx.x;
+        int by = blockIdx.y;
+        int tx = threadIdx.x;
+        int ty = threadIdx.y;
 
-X_get = np.zeros((M, N)).astype(np.float32)
-ph = np.random.randn(N).astype(np.float32)
-th = np.random.randn(M).astype(np.float32)
-th = np.ones((M, 1)).astype(np.float32)
+        // Block row and column
+        int row = by*blockDim.y + ty;
+        int col = bx*blockDim.x + tx;
 
-# ph = np.zeros((N,)).astype(np.float32)
+        //int dim = gridDim.x*blockDim.x;
+        if (row < M && col < N){
+            int idx = row*N + col ;
+            X[idx] -= T[row]*P[col];
+        }
 
+        }
+        """ % {"size_M": M, "size_N": N})
 
-X_get = gpuarray.to_gpu(X_get)
-th_gpu = gpuarray.to_gpu(th)
-ph_gpu = gpuarray.to_gpu(ph)
-
-
-def outer_mult(X_get, th_gpu, ph_gpu):
+    outer = outer_mult.get_function("outer_mult")
     # Maybe modify this because gridDim in x direc is big !
     block_size = (min(N, 32), min(M, 32), 1)
-    grid_size = (int(np.ceil(N / block_size[0])), int(np.ceil(M / block_size[1])), 1)
+    grid_size = (
+        int(np.ceil(N / block_size[0])), int(np.ceil(M / block_size[1])), 1)
     print('M', M)
     print('N', N)
     print('block_size : ', block_size)
     print('grid_size : ', grid_size)
-    outer(X_get, th_gpu, ph_gpu, block=block_size, grid=grid_size)
-    return X_get
+    outer(X_gpu, th_gpu, ph_gpu, block=block_size, grid=grid_size)
+    return X_gpu.get()
 
 
-X_get = outer_mult(X_get, th_gpu, ph_gpu)
+X = np.random.randn(M, N).astype(np.float32)
+ph = np.random.randn(N).astype(np.float32)
+th = np.random.randn(M).astype(np.float32)
 
-# print(X_get.get())
 
-# print('\n ', np.outer(th, ph))
+X_gpu = gpuarray.to_gpu(X)
+th_gpu = gpuarray.to_gpu(th)
+ph_gpu = gpuarray.to_gpu(ph)
 
-# print('\n ', ph)
-np.testing.assert_allclose(np.outer(th, ph), X_get.get(), rtol=1e-2)
+
+X_get = outer_mult(X_gpu, th_gpu, ph_gpu)
+
+test = X - np.outer(th, ph)
+np.testing.assert_allclose(test, X_get, rtol=1e-2)
