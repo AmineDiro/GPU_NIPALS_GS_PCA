@@ -4,6 +4,7 @@ from pycuda.compiler import SourceModule
 import pycuda.gpuarray as gpuarray
 from pycuda import cumath
 import numpy as np
+from time import time
 
 # def onecomp_cpu(X, th, ph):
 #     # loadings
@@ -55,7 +56,6 @@ class Nipals_GPU():
         return ph_gpu.get()
 
     # Normalize ph/ ||ph||
-
     def normalize_vector(self, ph_gpu):
         normalize = SourceModule("""
             #include <math.h>
@@ -71,7 +71,7 @@ class Nipals_GPU():
         num_threads = int(np.ceil(self.N))
         grid_size = int(np.ceil(num_threads / 1024))
 
-        # NOTE : Tried to implement with from sirst princples GPU but a lot  problems
+        # NOTE : Tried to implement with from first princples GPU but a lot  problems
         # Check out : https://nvlabs.github.io/cub/classcub_1_1_block_reduce.html
         sum_ph = gpuarray.sum(ph_gpu**2)
         norm2_ph = np.float32(np.sqrt(sum_ph.get()))
@@ -87,7 +87,6 @@ class Nipals_GPU():
 
     # Multiply X * ph
     #th_old_gpu = th_gpu.copy()
-
     def multipy(self, X_gpu, ph_gpu, th_gpu):
         mult = SourceModule("""
 
@@ -155,7 +154,7 @@ class Nipals_GPU():
         return X_gpu
 
 
-# Compute eigenvalue
+    # Compute eigenvalue
     @staticmethod
     def get_eigenvalue(th_gpu):
         sum_th = gpuarray.sum(th_gpu**2)
@@ -173,23 +172,38 @@ class Nipals_GPU():
 
     def onestepcomp_gpu(self, X_gpu, comp):
         # get comp row
-        th = self.X_PCA[:,comp]
-        # th = self.X_GPU[:, comp] 
+        th = self.X_PCA[:, comp]
+        # th = self.X_GPU[:, comp]
         # NOTE : +20s  on test don't get why
-        
         ph = np.zeros((self.N,)).astype(np.float32)
-        th_gpu =gpuarray.to_gpu(th)
+        th_gpu = gpuarray.to_gpu(th)
         ph_gpu = gpuarray.to_gpu(ph)
         eig = 0
 
         for j in range(self.maxiter):
+            t1 = time()
             self.multiply_transpose(X_gpu, th_gpu, ph_gpu)
+            t2 = time()
+            print('Time for mult_transpose',t2-t1)
+            
             # Normalize ph/ ||ph||
+            t1 = time()
             self.normalize_vector(ph_gpu)
+            t2 = time()
+            print('Time for normalize_vector',t2-t1)
+            
             # Multiply X * ph
+            t1 = time()
             self.multipy(X_gpu, ph_gpu, th_gpu)
+            t2 = time()
+            print('Time for multipy  X * ph ',t2-t1)
+
             # Compute eigenvalue
+            t1 = time()
             eigh = self.get_eigenvalue(th_gpu)
+            t2 = time()
+            print('Time for multipy eigenvalue',t2-t1)
+            
             if(np.abs(eigh - eig) < self.tol):
                 break
             eig = eigh
@@ -251,12 +265,12 @@ class Nipals_GPU():
 
         return True
 
-    def transform(self):
-        # Rertrieve the eigenvectors from score T= US where S is diag 
+    def transform_gpu(self):
+        # Rertrieve the eigenvectors from score T= US where S is diag
         self.eig_gpu = gpuarray.to_gpu(self.eig)
-        
-        U = self.scores_gpu.shape/ self.eig
-        
+
+        U = self.scores_gpu.shape / self.eig
+
         Z = U.T @ self.normalized_X
         return Z.T
 

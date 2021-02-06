@@ -114,6 +114,9 @@ class Nipals_CPU():
     def transform(self):
         # Rertrieve the eigenvectors from score T= US where S is diag 
         U = self.scores/ self.eig.values
+        print('scores shape:',self.scores.shape)
+        print('eig shape:',self.eig.values)
+        print('U shape:',U.shape)
         Z = U.T @ self.normalized_X
         return Z.T
 
