@@ -5,20 +5,11 @@ import pycuda.gpuarray as gpuarray
 from pycuda import cumath
 import numpy as np
 from time import time
-
-# def onecomp_cpu(X, th, ph):
-#     # loadings
-#     ph_cpu = X.T.dot(th)
-#     # Normalize
-#     ph_cpu = ph_cpu / np.sqrt(np.sum(ph_cpu*ph_cpu))
-#     # Scores update
-#     th_cpu = X.dot(ph_cpu)
-#     eig_cpu = np.sqrt(np.sum(th_cpu*th_cpu))
-#     return eig_cpu, th_cpu, ph_cpu
+from kernels.norme_carre import Norme2
 
 
 class Nipals_GPU():
-    def __init__(self, ncomp=None, tol=1e-2, maxiter=1000):
+    def __init__(self, ncomp=None, tol=1e-2, maxiter=1):
         self.tol = tol
         self.maxiter = maxiter
         self.ncomp = ncomp
@@ -45,7 +36,7 @@ class Nipals_GPU():
             P[row] = sum;
 
             }
-            """ % {"size_M": self.M, "size_N": self.N})
+             """ % {"size_M": self.M, "size_N": self.N})
 
         mult_transpose_gpu = mult_transpose.get_function("mult_transpose")
 
@@ -71,10 +62,13 @@ class Nipals_GPU():
         num_threads = int(np.ceil(self.N))
         grid_size = int(np.ceil(num_threads / 1024))
 
-        # NOTE : Tried to implement with from first princples GPU but a lot  problems
-        # Check out : https://nvlabs.github.io/cub/classcub_1_1_block_reduce.html
-        sum_ph = gpuarray.sum(ph_gpu**2)
-        norm2_ph = np.float32(np.sqrt(sum_ph.get()))
+        out = np.zeros(1, dtype=np.float32)
+        # print(c)
+        out_gpu = gpuarray.to_gpu(out)
+
+        sum_ph = Norme2(ph_gpu, ph_gpu, out_gpu, self.N)
+
+        norm2_ph = np.float32(np.sqrt(sum_ph))
 
         if grid_size > 1:
             block_size = 1024
@@ -83,6 +77,7 @@ class Nipals_GPU():
 
         normalize_gpu(ph_gpu, norm2_ph, block=(
             block_size, 1, 1), grid=(grid_size, 1, 1))
+
         return ph_gpu.get()
 
     # Multiply X * ph
@@ -153,12 +148,13 @@ class Nipals_GPU():
         outer(X_gpu, th_gpu, ph_gpu, block=block_size, grid=grid_size)
         return X_gpu
 
-
     # Compute eigenvalue
-    @staticmethod
-    def get_eigenvalue(th_gpu):
-        sum_th = gpuarray.sum(th_gpu**2)
-        norm2_th = np.sqrt(sum_th.get())
+    def get_eigenvalue(self,th_gpu):
+        out = np.zeros(1, dtype=np.float32)
+        # print(c)
+        out_gpu = gpuarray.to_gpu(out)
+        sum_th  = Norme2(th_gpu, th_gpu, out_gpu, self.M)
+        norm2_th = np.sqrt(sum_th)
         return norm2_th
 
     @staticmethod
@@ -182,28 +178,29 @@ class Nipals_GPU():
 
         for j in range(self.maxiter):
             t1 = time()
+            # Normalize X.T*th
             self.multiply_transpose(X_gpu, th_gpu, ph_gpu)
             t2 = time()
-            print('Time for mult_transpose',t2-t1)
-            
+            print('Time for mult_transpose', t2-t1)
+
             # Normalize ph/ ||ph||
             t1 = time()
             self.normalize_vector(ph_gpu)
             t2 = time()
-            print('Time for normalize_vector',t2-t1)
-            
+            print('Time for normalize_vector', t2-t1)
+
             # Multiply X * ph
             t1 = time()
             self.multipy(X_gpu, ph_gpu, th_gpu)
             t2 = time()
-            print('Time for multipy  X * ph ',t2-t1)
+            print('Time for multipy  X * ph ', t2-t1)
 
             # Compute eigenvalue
             t1 = time()
             eigh = self.get_eigenvalue(th_gpu)
             t2 = time()
-            print('Time for multipy eigenvalue',t2-t1)
-            
+            print('Time for multipy eigenvalue', t2-t1)
+
             if(np.abs(eigh - eig) < self.tol):
                 break
             eig = eigh

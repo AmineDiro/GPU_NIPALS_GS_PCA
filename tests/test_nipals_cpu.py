@@ -13,30 +13,32 @@ from time import time
 
 class TestNipalsCPU(unittest.TestCase):
 
-    def test_pca(self):
-        # generate data
-        X = np.random.randn(100000, 300)
+    # def test_pca(self):
+    #     # generate data
+    #     n_components = 2
 
-        # rng = np.random.RandomState(1)
-        # X = np.dot(rng.rand(2, 2), rng.randn(2, 200)).T
+    #     X = np.random.randn(100, 30)
 
-        nips = Nipals_CPU()
+    #     # rng = np.random.RandomState(1)
+    #     # X = np.dot(rng.rand(2, 2), rng.randn(2, 200)).T
 
-        assert nips.fit(X)
+    #     nips = Nipals_CPU(ncomp=n_components)
 
-        std = StandardScaler()
-        X = std.fit_transform(X)
-        pca = PCA()
-        X_pca = pca.fit_transform(X)
-        message = "NIPS PCA not equal to pca from sklearn"
-        decimalPlace = 2
-        npt.assert_almost_equal(np.abs(X_pca), np.abs(
-            nips.transform()), err_msg=message, decimal=1)
+    #     assert nips.fit(X)
+
+    #     std = StandardScaler()
+    #     X = std.fit_transform(X)
+    #     pca = PCA(n_components=n_components)
+    #     X_pca = pca.fit_transform(X)
+
+    #     message = "NIPS PCA not equal to pca from sklearn"
+    #     decimalPlace = 2
+    #     npt.assert_almost_equal(np.abs(X_pca), np.abs(
+    #         nips.transform()), err_msg=message, decimal=1)
 
     def test_eig(self):
         n_components = 2
-        X = np.random.randn(100000, 300)
-
+        X = np.random.randn(100, 30)
         # rng = np.random.RandomState(1)
         # X = np.dot(rng.rand(2, 2), rng.randn(2, 200)).T
         t1 = time()

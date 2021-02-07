@@ -13,7 +13,7 @@ setup(name='pca_gpu',
           "License :: OSI Approved :: MIT License"
       ],
       install_requires=['numpy'],
-      python_requires='>=3.7',
+      python_requires='>=3',
     #   extras_require={
     #       'gpu': ["pyopencl", "six"],
     #       'testing': [

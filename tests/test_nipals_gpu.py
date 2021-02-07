@@ -15,23 +15,20 @@ from time import time
 
 class TestNipalsGPU(unittest.TestCase):
 
-  
     def test_eig(self):
-        X = np.random.randn(100000, 300)
-
+        X = np.random.randn(100, 30)
+        n_components = 2
         t1 = time()
-        nips = Nipals_GPU()
+        nips = Nipals_GPU(ncomp=n_components)
         assert nips.fit_on_GPU(X)
-        t2= time()
-        print('Total time for GPU NIPALS :',t2-t1)
+        t2 = time()
+        print('Total time for GPU NIPALS :', t2-t1)
         std = StandardScaler()
         X = std.fit_transform(X)
-        pca = PCA()
+        pca = PCA(n_components=n_components)
         pca.fit(X)
 
         npt.assert_allclose(pca.singular_values_, nips.eig, rtol=1)
-
-
 
 
 if __name__ == '__main__':

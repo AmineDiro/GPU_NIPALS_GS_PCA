@@ -2,6 +2,7 @@ import numpy as np
 from scipy import linalg
 import pandas as pd
 import logging
+from time import time
 
 # Implementét : https://cran.r-project.org/web/packages/nipals/vignettes/nipals_algorithm.html
 
@@ -10,7 +11,7 @@ import logging
 
 class Nipals_CPU():
 
-    def __init__(self, ncomp=None, tol=0.00001, maxiter=500):
+    def __init__(self, ncomp=None, tol=0.00001, maxiter=100):
         self.tol = tol
         self.maxiter = maxiter
         self.ncomp = ncomp
@@ -54,6 +55,7 @@ class Nipals_CPU():
                 raise RuntimeError(
                     "Convergence not reached in {} iterations".format(self.maxiter))
         eigh = np.sqrt(np.sum(th*th))
+
         return th, ph ,eigh
 
     def fit(self, X, startcol=None):
