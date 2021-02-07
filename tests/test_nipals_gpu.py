@@ -10,13 +10,13 @@ import pycuda.autoinit
 from pycuda.compiler import SourceModule
 import pycuda.gpuarray as gpuarray
 
-from nipals.NIPALS_GPU import Nipals_GPU
+from nipals.NIPALS import Nipals_GPU
 from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update
 
 # sys.path.insert(
 #    0, '/Users/dihroussi/Google Drive/Documents/ENSAE/GPU/Projet GPU')
 
-N = 100
+N = 1000
 
 
 class TestNipalsGPU(unittest.TestCase):
