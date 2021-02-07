@@ -50,6 +50,7 @@ def Norme2(a_gpu, b_gpu, c_gpu, N):
 
     return c_gpu.get()
 
+# N_COL=10
 
 # a = np.random.randint(low=-10, high=10, size=N_COL, dtype=np.int32)
 # a = a.astype(np.float32)
@@ -63,7 +64,7 @@ def Norme2(a_gpu, b_gpu, c_gpu, N):
 # cuda.memcpy_htod(c_gpu, c)
 
 
-# Norme2_2(a_gpu, a_gpu, c_gpu)
+# Norme2(a_gpu, a_gpu, c_gpu,N_COL)
 
 
 # cuda.memcpy_dtoh(c, c_gpu)

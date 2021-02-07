@@ -6,10 +6,11 @@ from pycuda import cumath
 import numpy as np
 from time import time
 from kernels.norme_carre import Norme2
+from kernels.mult_transpose import mult_transpose
 
 
 class Nipals_GPU():
-    def __init__(self, ncomp=None, tol=1e-2, maxiter=1):
+    def __init__(self, ncomp=None, tol=1e-5, maxiter=500):
         self.tol = tol
         self.maxiter = maxiter
         self.ncomp = ncomp
@@ -66,6 +67,7 @@ class Nipals_GPU():
         # print(c)
         out_gpu = gpuarray.to_gpu(out)
 
+        # sum_ph = gpuarray.sum(ph_gpu**2)
         sum_ph = Norme2(ph_gpu, ph_gpu, out_gpu, self.N)
 
         norm2_ph = np.float32(np.sqrt(sum_ph))
@@ -149,11 +151,11 @@ class Nipals_GPU():
         return X_gpu
 
     # Compute eigenvalue
-    def get_eigenvalue(self,th_gpu):
+    def get_eigenvalue(self, th_gpu):
         out = np.zeros(1, dtype=np.float32)
         # print(c)
         out_gpu = gpuarray.to_gpu(out)
-        sum_th  = Norme2(th_gpu, th_gpu, out_gpu, self.M)
+        sum_th = Norme2(th_gpu, th_gpu, out_gpu, self.M)
         norm2_th = np.sqrt(sum_th)
         return norm2_th
 
@@ -169,9 +171,11 @@ class Nipals_GPU():
     def onestepcomp_gpu(self, X_gpu, comp):
         # get comp row
         th = self.X_PCA[:, comp]
+        ph = np.zeros((self.N,)).astype(np.float32)
+
         # th = self.X_GPU[:, comp]
         # NOTE : +20s  on test don't get why
-        ph = np.zeros((self.N,)).astype(np.float32)
+
         th_gpu = gpuarray.to_gpu(th)
         ph_gpu = gpuarray.to_gpu(ph)
         eig = 0
@@ -179,7 +183,11 @@ class Nipals_GPU():
         for j in range(self.maxiter):
             t1 = time()
             # Normalize X.T*th
+
             self.multiply_transpose(X_gpu, th_gpu, ph_gpu)
+            np.testing.assert_allclose(ph_gpu.get(), (X_gpu.get()).T@th.get())
+
+            #ph_gpu=  mult_transpose(X_gpu,th_gpu,ph_gpu,self.N)
             t2 = time()
             print('Time for mult_transpose', t2-t1)
 
@@ -210,9 +218,9 @@ class Nipals_GPU():
         """
         fit method
         -------
-        parametres 
+        parametres : X data N x N Matrix 
 
-        output
+        output : True       
         ------
         """
         self.X = X.astype(np.float32)
@@ -262,19 +270,11 @@ class Nipals_GPU():
 
         return True
 
-    def transform_gpu(self):
-        # Rertrieve the eigenvectors from score T= US where S is diag
-        self.eig_gpu = gpuarray.to_gpu(self.eig)
+    # def transform_gpu(self):
+    #     # Rertrieve the eigenvectors from score T= US where S is diag
+    #     self.eig_gpu = gpuarray.to_gpu(self.eig)
 
-        U = self.scores_gpu.shape / self.eig
+    #     U = self.scores_gpu.shape / self.eig
 
-        Z = U.T @ self.normalized_X
-        return Z.T
-
-# X = np.random.randn(100, 100).astype(np.float32)
-
-# nips = Nipals_GPU()
-
-# nips.fit_on_GPU(X)
-
-# print(X)
+    #     Z = U.T @ self.normalized_X
+    #     return Z.T
