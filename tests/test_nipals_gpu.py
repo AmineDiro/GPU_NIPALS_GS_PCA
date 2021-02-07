@@ -16,7 +16,7 @@ from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy
 # sys.path.insert(
 #    0, '/Users/dihroussi/Google Drive/Documents/ENSAE/GPU/Projet GPU')
 
-N = 1000
+N = 100
 
 
 class TestNipalsGPU(unittest.TestCase):
@@ -42,7 +42,6 @@ class TestNipalsGPU(unittest.TestCase):
         norm_gpu = gpuarray.to_gpu(norm)
 
         norm2 = Norme2(ph_gpu, ph_gpu, norm_gpu, N)
-        print(type(norm2))
 
         npt.assert_allclose(np.sum(ph*ph), norm2, rtol=1e-2)
 
@@ -78,27 +77,27 @@ class TestNipalsGPU(unittest.TestCase):
         th_gpu = gpuarray.to_gpu(th)
         ph_gpu = gpuarray.to_gpu(ph)
 
-        dum = X -np.outer(th, ph)
+        dum = X - np.outer(th, ph)
 
-        X_gpu =  update(X_gpu, th_gpu, ph_gpu, N, N)
+        X_gpu = update(X_gpu, th_gpu, ph_gpu, N, N)
 
         npt.assert_allclose(dum, X_gpu.get(), rtol=1e-2)
 
-    # def test_eig(self):
-    #     N = 10
-    #     X = np.random.randn(N, N)
-    #     n_components = 2
-    #     t1 = time()
-    #     nips = Nipals_GPU(ncomp=n_components)
-    #     assert nips.fit_on_GPU(X)
-    #     t2 = time()
-    #     print('Total time for GPU NIPALS :', t2-t1)
-    #     std = StandardScaler()
-    #     X = std.fit_transform(X)
-    #     pca = PCA(n_components=n_components)
-    #     pca.fit(X)
+    def test_eig(self):
+        N = 10
+        X = np.random.randn(N, N)
+        n_components = 2
+        t1 = time()
+        nips = Nipals_GPU(ncomp=n_components)
+        assert nips.fit_on_GPU(X)
+        t2 = time()
+        print('Total time for GPU NIPALS :', t2-t1)
+        std = StandardScaler()
+        X = std.fit_transform(X)
+        pca = PCA(n_components=n_components)
+        pca.fit(X)
 
-    #     npt.assert_allclose(pca.singular_values_, nips.eig, rtol=1e-2)
+        npt.assert_allclose(pca.singular_values_, nips.eig, rtol=1e-1)
 
 
 if __name__ == '__main__':
