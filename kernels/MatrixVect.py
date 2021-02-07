@@ -13,8 +13,7 @@ THREADS_PER_BLOCK = 1024
 N = 5# num observations
 P = 2 # num variables
 
-def MatrixSum(M,  V , out, u_scal=1 ,
-               v_scal=1 ,  N = N, P=P, THREADS_PER_BLOCK=THREADS_PER_BLOCK):
+def MatrixSum(M,  V , out, u_scal=1 ,v_scal=1 ,  N = N, P=P, THREADS_PER_BLOCK=THREADS_PER_BLOCK):
       
             GRID_SIZE= (P, int((N+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK))
             
