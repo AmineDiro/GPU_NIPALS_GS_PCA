@@ -113,7 +113,7 @@ class Nipals_GPU():
             th_gpu, ph_gpu, eigh = self.onestepcomp_gpu(self.X_GPU, comp)
 
             # Update X
-            self.X_GPU = update(self.X_GPU, th_gpu, ph_gpu,self.M,self.N)
+            self.X_GPU = update(self.X_GPU, th_gpu, ph_gpu,self.M,self.N,1)
             self.loadings_gpu[:, comp] = ph_gpu.get()
             self.scores_gpu[:, comp] = th_gpu.get()
             eig[comp] = eigh

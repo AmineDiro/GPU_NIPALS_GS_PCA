@@ -7,9 +7,9 @@ import pycuda.gpuarray as gpuarray
 import numpy as np
 
 
-# ncol = 5
-# nrow = 5
-# tile_dim = 32
+ncol = 5
+nrow = 3
+tile_dim = 32
 
 
 def Matricetranspose(out_gpu, inp_gpu, M=ncol, N=nrow, TILE_DIM=tile_dim):
@@ -53,30 +53,28 @@ def Matricetranspose(out_gpu, inp_gpu, M=ncol, N=nrow, TILE_DIM=tile_dim):
     blocksPerGrid = (int(np.ceil(float(N)/float(32))),
                      int(np.ceil(float(M)/float(32))), 1)
     func(out_gpu, inp_gpu, block=(32, 32, 1), grid=blocksPerGrid)
+    return True
 
 
-# # M_mat = np.reshape(np.random.randint(-5,5,size=ncol*nrow), (nrow,ncol))
-# # M = M_mat.flatten()
-# # M = M_mat.astype(np.float32)
-# # M_gpu = cuda.mem_alloc(M.nbytes)
-# # cuda.memcpy_htod(M_gpu,M)
+M_mat = np.reshape(np.random.randint(-5,5,size=ncol*nrow), (nrow,ncol))
+M = M_mat.flatten()
+M = M_mat.astype(np.float32)
+M_gpu = cuda.mem_alloc(M.nbytes)
+cuda.memcpy_htod(M_gpu,M)
 
-# # print(M.shape)
+print(M.shape)
 
-# # res_gpu = gpuarray.GPUArray((ncol*nrow), np.float32)
-
-
-# # # res = np.zeros(ncol*nrow, dtype= np.float32)
-# # # res_gpu = cuda.mem_alloc(res.nbytes)
-# # # cuda.memcpy_htod(res_gpu, res)
+res = np.zeros(ncol*nrow, dtype= np.float32)
+res_gpu = cuda.mem_alloc(res.nbytes)
+cuda.memcpy_htod(res_gpu, res)
 
 
-# # Matricetranspose(res_gpu,M_gpu,ncol,nrow)
+Matricetranspose(res_gpu,M_gpu,ncol,nrow)
 
-# # # cuda.memcpy_dtoh(res, res_gpu)
+cuda.memcpy_dtoh(res, res_gpu)
 
-# # print(res_gpu.get())
-# # print(M.T.flatten())
+print(res_gpu.get())
+print(M.T.flatten())
 
 
 # ncol = 500
