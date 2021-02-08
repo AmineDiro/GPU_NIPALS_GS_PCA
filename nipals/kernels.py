@@ -141,6 +141,7 @@ def multipy(X_gpu, ph_gpu, th_gpu, M, N):
 
 
 # Multiply X - th @ ph.T  ( Mx1 * 1xN)
+# TODO : add scalar op X <= X - a*T@P.T
 def update(X_gpu, th_gpu, ph_gpu, M, N):
     outer_mult = SourceModule("""
         #include <stdio.h>

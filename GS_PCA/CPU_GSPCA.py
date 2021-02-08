@@ -13,27 +13,40 @@ def SG_PCA(X, n, epsilon):
         mu = 0
         V[:, k] = R[:, k]
         while True:
-            U[:, k] = np.dot(R.T, V)[:, k]
+            # multiply transpose
+            U[:, k] = R.T@V[:, k]
             if k > 0:
                 # NOTE :
+                # multiply transpose + slicing numpy
                 A = U[:, n-k:].T @ U[:, k]
+                # multiply + gpuarray op
+
                 U[:, k] = U[:, k] - U[:, n-k:]@A
 
             L2 = np.linalg.norm(U[:, k])
+            # normalize
             U[:, k] = U[:, k]/L2
+            # multiply
             V[:, k] = R@U[:, k]
             if k > 0:
+                # multiply transpose
                 B = V[:, :k].T @ V[:, k]
+                # multiply + gpu op
                 V[:, k] = V[:, k] - V[:, :k]@B
+            # get eigen vector
             Lk = np.linalg.norm(V[:, k])
+            
+            # gpuarray op 
             V[:, k] = V[:, k]/Lk
             if np.abs(Lk-mu) < epsilon:
                 break
             mu = Lk
+        # update 
         R = R - Lk*np.outer(V[:, k], U[:, k])
         Lambda[k, k] = Lk
         vectL[k] = Lk
-
+    
+    # Matrix Matrix Nxk @ kxk mult ?? 
     T = V@Lambda
     P = U
     return T, P, R, Lambda, vectL
