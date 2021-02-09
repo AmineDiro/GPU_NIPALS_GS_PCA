@@ -38,7 +38,7 @@ def multiply_transpose(X_gpu, th_gpu, ph_gpu, M, N):
                        block=block_size, grid=grid_size)
 
     dum = X_gpu.get().T @ th_gpu.get()
-    np.testing.assert_allclose(ph_gpu.get(), dum)
+    # np.testing.assert_allclose(ph_gpu.get(), dum)
 
     return ph_gpu
 
@@ -284,10 +284,13 @@ def slice_M_left(X_gpu, M_gpu, k, M, N):
     return M_gpu
 
 
-def slice_M_right(X_gpu, M_gpu, k, M, N):
-    slice_matrice_left = SourceModule("""
+
+
+def slice_M_right(X_gpu, M_gpu, k, N, M):
+    # N ligne et M colonnes
+    slice_matrice = SourceModule("""
         # include <stdio.h>
-        # define k %(col)d
+        # define k %(K)d
         # define M %(size_M)d
         # define N %(size_N)d
         __global__ void slice(float *X, float *T)
@@ -300,19 +303,19 @@ def slice_M_right(X_gpu, M_gpu, k, M, N):
         int row = by*blockDim.y + ty;
         int col = bx*blockDim.x + tx;
       
-        if (row < M && col < N){
-            if(col>= (N-k)){
-            int idx_X = row*N + col ;
-            int idx_T = row*k + col-N+k ;
+        if (row < N && col < k){
+            int idx_X = row*M + col+M-k ;
+            int idx_T = row*k + col ;
             T[idx_T]=X[idx_X];
-            }
-            }
+            }            
+            
+          
         }
-        """ % {"size_M": M, "size_N": N, "col": k})
-    slice_left = slice_matrice_left.get_function("slice")
+        """ % {"size_M": M, "size_N": N, "K": k})
+    slice_right = slice_matrice.get_function("slice")
     # Maybe modify this because gridDim in x direc is big !
-    block_size = (min(M, 32), min(N, 32), 1)
+    block_size = (min(k, 32), min(N, 32), 1)
     grid_size = (
-        int(np.ceil(M / block_size[0])), int(np.ceil(N / block_size[1])), 1)
-    slice_left(X_gpu, M_gpu, block=block_size, grid=grid_size)
+        int(np.ceil(k / block_size[0])), int(np.ceil(N / block_size[1])), 1)
+    slice_right(X_gpu, M_gpu, block=block_size, grid=grid_size)
     return M_gpu

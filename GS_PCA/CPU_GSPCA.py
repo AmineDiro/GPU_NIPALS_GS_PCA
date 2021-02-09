@@ -1,9 +1,6 @@
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
-
-def SG_PCA(X, n, epsilon):
+def SG_PCA_CPU(X, n, epsilon):
     R = np.copy(X)
     V = np.zeros((X.shape[0], n))
     Lambda = np.zeros((n, n))
@@ -52,18 +49,18 @@ def SG_PCA(X, n, epsilon):
     return T, P, R, Lambda, vectL
 
 
-N = 20
+# N = 20
 
-X = np.random.randn(N, N)
-std = StandardScaler()
-X = std.fit_transform(X)
+# X = np.random.randn(N, N)
+# std = StandardScaler()
+# X = std.fit_transform(X)
 
-T, P, R, L, vectL = SG_PCA(X, n=N, epsilon=1e-7)
+# T, P, R, L, vectL = SG_PCA(X, n=N, epsilon=1e-7)
 
-pca = PCA()
-pca.fit(X)
+# pca = PCA()
+# pca.fit(X)
 
-# print('PCA', pca.singular_values_)
-# print(vectL)
+# # print('PCA', pca.singular_values_)
+# # print(vectL)
 
-np.testing.assert_allclose(pca.singular_values_, vectL, rtol=1e-01)
+# np.testing.assert_allclose(pca.singular_values_, vectL, rtol=1e-01)
