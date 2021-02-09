@@ -16,21 +16,21 @@ from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy
 # sys.path.insert(
 #    0, '/Users/dihroussi/Google Drive/Documents/ENSAE/GPU/Projet GPU')
 
-N = 10
+N = 400
 
 
 class TestNipalsGPU(unittest.TestCase):
     def test_mult_transpose(self):
-
-        X = np.random.randn(N, N).astype(np.float32)
+        M= N-1
+        X = np.random.randn(N, M).astype(np.float32)
         th = np.random.randn(N).astype(np.float32)
-        ph = np.zeros((N,)).astype(np.float32)
+        ph = np.zeros((M,)).astype(np.float32)
 
         X_gpu = gpuarray.to_gpu(X)
         th_gpu = gpuarray.to_gpu(th)
         ph_gpu = gpuarray.to_gpu(ph)
 
-        ph_gpu = multiply_transpose(X_gpu, th_gpu, ph_gpu, N, N)
+        ph_gpu = multiply_transpose(X_gpu, th_gpu, ph_gpu, N, M)
 
         npt.assert_allclose(X.T @ th, ph_gpu.get(), rtol=1e-2)
 
@@ -147,7 +147,7 @@ class TestNipalsGPU(unittest.TestCase):
         npt.assert_allclose(dum, out_gpu.get(), rtol=1e-2)
 
     def test_slice_M_right(self):
-        k = 3
+        k = 2
         X = np.random.randn(N, N).astype(np.float32)
         out = np.zeros((N, k)).astype(np.float32)
         X_gpu = gpuarray.to_gpu(X)

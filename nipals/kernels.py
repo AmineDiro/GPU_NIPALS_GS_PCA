@@ -20,8 +20,8 @@ def multiply_transpose(X_gpu, th_gpu, ph_gpu, M, N):
 
             float sum = 0;
             for (int m= 0; m < M; ++m)
-            {
-                sum += X[row + m*N]*T[m];
+            {   
+                sum += X[row + m*N]*T[m];     
             }
 
             // Write the value to the subvector Tsub
@@ -36,6 +36,9 @@ def multiply_transpose(X_gpu, th_gpu, ph_gpu, M, N):
     grid_size = (int(np.ceil(N / block_size[0])), 1, 1)
     mult_transpose_gpu(X_gpu, th_gpu, ph_gpu,
                        block=block_size, grid=grid_size)
+
+    dum = X_gpu.get().T @ th_gpu.get()
+    np.testing.assert_allclose(ph_gpu.get(), dum)
 
     return ph_gpu
 
@@ -297,20 +300,19 @@ def slice_M_right(X_gpu, M_gpu, k, M, N):
         int row = by*blockDim.y + ty;
         int col = bx*blockDim.x + tx;
       
-        if (row <= M && col <= N){
+        if (row < M && col < N){
             if(col>= (N-k)){
             int idx_X = row*N + col ;
             int idx_T = row*k + col-N+k ;
             T[idx_T]=X[idx_X];
-
             }
             }
         }
         """ % {"size_M": M, "size_N": N, "col": k})
     slice_left = slice_matrice_left.get_function("slice")
     # Maybe modify this because gridDim in x direc is big !
-    block_size = (min(N, 32), min(M, 32), 1)
+    block_size = (min(M, 32), min(N, 32), 1)
     grid_size = (
-        int(np.ceil(N / block_size[0])), int(np.ceil(M / block_size[1])), 1)
+        int(np.ceil(M / block_size[0])), int(np.ceil(N / block_size[1])), 1)
     slice_left(X_gpu, M_gpu, block=block_size, grid=grid_size)
     return M_gpu

@@ -7,7 +7,7 @@ import numpy as np
 from time import time
 # from kernels.norme_carre import Norme2
 # from kernels.mult_transpose import mult_transpose
-from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update, get_eigenvalue, substract, slice_column
+from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update, get_eigenvalue, substract, slice_column, slice_M_right
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -30,21 +30,36 @@ def SG_PCA(X, n, epsilon, maxiter=100):
     for k in range(n):
         mu = 0
         V_gpu[:, k] = R_gpu[:, k]
-        print(k)
+        print('k =', k)
         for j in range(maxiter):
           # multiply transpose U[:, k] = R.T@V[:, k]
-            U_gpu[:, k] = multiply_transpose(
-                R_gpu, V_gpu[:, k], U_gpu[:, k], N, N)
-            if k > 0:
-                # NOTE :
-                # multiply transpose + slicing numpy A = U[:, n-k:].T @ U[:, k]
+            Vk_gpu = gpuarray.empty((N,), dtype=np.float32)
+            Uk_gpu = gpuarray.empty((N,), dtype=np.float32)
 
-                # U_gpu[:, n-k:] = gpuarray.to_gpu(U[:, n-k:])
-                # U_gpu[:, k] = gpuarray.to_gpu(U[:, k])
+            slice_column(U_gpu, Uk_gpu, k, N, n)
+            slice_column(V_gpu, Vk_gpu, k, N, n)
+
+            U_gpu[:, k] = multiply_transpose(
+                R_gpu, Vk_gpu, Uk_gpu, N, N)
+          
+            # np.testing.a ssert_allclose(dum,  U_gpu[:, k].get())
+
+            if k > 0:
 
                 A_gpu = gpuarray.empty((k,), dtype=np.float32)
+
+                U_gpu_right = gpuarray.empty((N, k), dtype=np.float32)
+
+                U_gpu_right = slice_M_right(U_gpu, U_gpu_right, k, N, n)
+
                 A_gpu = multiply_transpose(
-                    U_gpu[:, n-k:], U_gpu[:, k], A_gpu, N, k)
+                    U_gpu_right, U_gpu[:, k], A_gpu, N, k)
+
+                # print(U_gpu.get()[:, n-k:], '\n\n')
+
+                # print(U_gpu[:, k])
+
+                # np.testing.assert_allclose(dum, A_gpu.get())
 
                 # multiply + gpuarray op U[:, k] = U[:, k] - U[:, n-k:]@A
                 temp_gpu = gpuarray.empty((M,), dtype=np.float32)
@@ -53,15 +68,13 @@ def SG_PCA(X, n, epsilon, maxiter=100):
 
                 out = np.zeros(N).astype(np.float32)
                 out_gpu = gpuarray.to_gpu(out)
-                
+
                 kU = gpuarray.empty((N,), dtype=np.float32)
                 dum = U_gpu.get()[:, k] - temp_gpu.get()
 
                 slice_column(U_gpu, kU, k, N, N)
 
                 U_gpu[:, k] = substract(out_gpu, kU, temp_gpu, M)
-
-                print('sub : ', out_gpu.get())
 
                 # np.testing.assert_allclose(dum, out_gpu.get())
 
@@ -100,7 +113,9 @@ def SG_PCA(X, n, epsilon, maxiter=100):
             mu = Lk
         # update R = R - Lk*np.outer(V[:, k], U[:, k])
         # U_gpu devra être la transposée
+
         R_gpu = update(R_gpu, V_gpu[:, k], U_gpu[:, k], M, N, Lk)
+
         # Lambda_gpu[k, k] = Lk
         vectL[k] = Lk
 
@@ -115,8 +130,8 @@ def SG_PCA(X, n, epsilon, maxiter=100):
     return T, P, R, Lambda, vectL
 
 
-N = 5
-n = 3
+N = 4
+n = 2
 X = np.random.randn(N, N)
 std = StandardScaler()
 X = std.fit_transform(X)
