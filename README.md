@@ -1,5 +1,5 @@
-## NIPALS-PCA Algorithm
-
+# Parallel GPU Implementation of IterativePCA Algorithms
+Principal component analysis (PCA) is one of the most valuable results from applied linear algebra, and probably the most popular method used for compacting higher dimensional data sets into lower dimensional ones for data analysis, visu-alization, feature extraction, or data compression
 - The purpose of considering this algorithm here is three-fold:
     - it gives additional insight into what the loadings and scores mean;
     - it shows how each component is independent of (orthogonal to) the other components,
@@ -12,23 +12,15 @@ The purpose is to implement the paper :[link](https://arxiv.org/abs/0811.1081) o
 
 ## Install requirements
 
-## Todo Amine 
-- Implement CPU NIPALS-PCA => OK
-- Write Unitary tests vs sklearn  PCA  => OK
-- Implement GPU NIPALS-PCA
-    - Implemented onstep compt => BUG MATRIX MULT 
-    - Implement for loop
-- Test CPU vs GPU nipals
+You'll need Numpy, Sklearn for running and testing the CPU verion.
 
+For running the GPU version, you'll need a Linux or Windows 10 PC with a modern NVIDIA GPU (>=2016) is required, with all necessary GPU drivers and the CUDA Toolkit (10.0 onward) installed. 
+A suitable Python (>=3) with the PyCUDA module is also required. 
 
-# Report 
-- PCA pseudo code : nipals gram schmidt 
-- Pycuda + kernels 
-- Challenges : 
-    - Cuda 
-    - version normal
-    - matrice carré
-    - version optimisé : shared memory , tiles.. 
-- Speedup test (non optimal) and vs numpy
-- Conclusion : 
-    - what do ? coallesce , shared memory , 
+## Testings
+
+For testing the kernel functions in `tests/`, run the following:
+``` 
+pip install -e .
+python -m unittest -v tests/test_nipals_gpu.py
+ ```
