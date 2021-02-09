@@ -8,6 +8,54 @@ from time import time
 from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update, get_eigenvalue, substract, slice_column, slice_M_right, slice_M_left
 
 
+def GS_PCA_CPU(X, n, epsilon):
+    R = np.copy(X)
+    V = np.zeros((X.shape[0], n))
+    Lambda = np.zeros((n, n))
+    vectL = np.zeros(n)
+    U = np.zeros((X.shape[1], n))
+    for k in range(n):
+        mu = 0
+        V[:, k] = R[:, k]
+        while True:
+            # multiply transpose
+            U[:, k] = R.T@V[:, k]
+            if k > 0:
+                # NOTE :
+                # multiply transpose + slicing numpy
+                A = U[:, n-k:].T @ U[:, k]
+                # multiply + gpuarray op
+
+                U[:, k] = U[:, k] - U[:, n-k:]@A
+
+            L2 = np.linalg.norm(U[:, k])
+            # normalize
+            U[:, k] = U[:, k]/L2
+            # multiply
+            V[:, k] = R@U[:, k]
+            if k > 0:
+                # multiply transpose
+                B = V[:, :k].T @ V[:, k]
+                # multiply + gpu op
+                V[:, k] = V[:, k] - V[:, :k]@B
+            # get eigen vector
+            Lk = np.linalg.norm(V[:, k])
+            
+            # gpuarray op 
+            V[:, k] = V[:, k]/Lk
+            if np.abs(Lk-mu) < epsilon:
+                break
+            mu = Lk
+        # update 
+        R = R - Lk*np.outer(V[:, k], U[:, k])
+        Lambda[k, k] = Lk
+        vectL[k] = Lk
+    
+    # Matrix Matrix Nxk @ kxk mult 
+    T = V@Lambda
+    P = U
+    return T, P, R, Lambda, vectL
+
 def GS_PCA_GPU(X, n, epsilon, maxiter=100):
     M = X.shape[0]
     N = X.shape[1]
@@ -36,8 +84,6 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
             U_gpu[:, k] = multiply_transpose(
                 R_gpu, Vk_gpu, Uk_gpu, N, N)
 
-            # np.testing.a ssert_allclose(dum,  U_gpu[:, k].get())
-
             if k > 0:
 
                 A_gpu = gpuarray.empty((k,), dtype=np.float32)
@@ -52,7 +98,6 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
                 # multiply + gpuarray op U[:, k] = U[:, k] - U[:, n-k:]@A
                 temp_gpu = gpuarray.empty((M,), dtype=np.float32)
                 temp_gpu = multipy(U_gpu_right, A_gpu, temp_gpu, M, k)
-                # U_gpu[:, k] = U_gpu[:, k] - temp_gpu
 
                 out = np.zeros(N).astype(np.float32)
                 out_gpu = gpuarray.to_gpu(out)
@@ -60,7 +105,6 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
                 kU = gpuarray.empty((N,), dtype=np.float32)
 
                 slice_column(U_gpu, kU, k, N, n)
-                # print("U_gpu \n",U_gpu)
                 dum = kU.get() - temp_gpu.get()
 
                 U_gpu[:, k] = substract(out_gpu, kU, temp_gpu, M)
@@ -71,9 +115,6 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
             slice_column(U_gpu, Uk_gpu, k, N, n)
 
             U_gpu[:, k] = normalize_vector(Uk_gpu, N)
-       
-            # dum = test/ np.sqrt(np.dot(test,test))
-            # np.testing.assert_allclose(dum,  U_gpu[:, k].get())
             
             # multiply
             Vk_gpu = gpuarray.empty((N,), dtype=np.float32)
@@ -121,7 +162,6 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
 
             mu = Lk
         # update R = R - Lk*np.outer(V[:, k], U[:, k])
-        # U_gpu devra être la transposée
         Vk_gpu = gpuarray.empty((N,), dtype=np.float32)
         Uk_gpu = gpuarray.empty((N,), dtype=np.float32)
 
@@ -140,68 +180,4 @@ def GS_PCA_GPU(X, n, epsilon, maxiter=100):
     R = R_gpu.get()
     return T, P, R, Lambda, vectL
 
-
-# N = 100
-# n = 2
-# X = np.random.randn(N, N)
-# std = StandardScaler()
-# X = std.fit_transform(X)
-
-# T, P, R, Lambda, vectL = SG_PCA(X, n, epsilon=1e-2)
-
-# pca = PCA(n_components=n)
-# pca.fit(X)
-
-
-# print("GS", vectL)
-# print('PCA', pca.singular_values_)
-
-
-def GS_PCA_CPU(X, n, epsilon):
-    R = np.copy(X)
-    V = np.zeros((X.shape[0], n))
-    Lambda = np.zeros((n, n))
-    vectL = np.zeros(n)
-    U = np.zeros((X.shape[1], n))
-    for k in range(n):
-        mu = 0
-        V[:, k] = R[:, k]
-        while True:
-            # multiply transpose
-            U[:, k] = R.T@V[:, k]
-            if k > 0:
-                # NOTE :
-                # multiply transpose + slicing numpy
-                A = U[:, n-k:].T @ U[:, k]
-                # multiply + gpuarray op
-
-                U[:, k] = U[:, k] - U[:, n-k:]@A
-
-            L2 = np.linalg.norm(U[:, k])
-            # normalize
-            U[:, k] = U[:, k]/L2
-            # multiply
-            V[:, k] = R@U[:, k]
-            if k > 0:
-                # multiply transpose
-                B = V[:, :k].T @ V[:, k]
-                # multiply + gpu op
-                V[:, k] = V[:, k] - V[:, :k]@B
-            # get eigen vector
-            Lk = np.linalg.norm(V[:, k])
-            
-            # gpuarray op 
-            V[:, k] = V[:, k]/Lk
-            if np.abs(Lk-mu) < epsilon:
-                break
-            mu = Lk
-        # update 
-        R = R - Lk*np.outer(V[:, k], U[:, k])
-        Lambda[k, k] = Lk
-        vectL[k] = Lk
-    
-    # Matrix Matrix Nxk @ kxk mult ?? 
-    T = V@Lambda
-    P = U
-    return T, P, R, Lambda, vectL
 
