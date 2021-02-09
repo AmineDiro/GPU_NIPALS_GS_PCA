@@ -11,12 +11,12 @@ from pycuda.compiler import SourceModule
 import pycuda.gpuarray as gpuarray
 
 from nipals.NIPALS import Nipals_GPU
-from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update, substract, slice_column
+from nipals.kernels import multiply_transpose, normalize_vector, Norme2, multipy, update, substract, slice_column, slice_M_left, slice_M_right
 
 # sys.path.insert(
 #    0, '/Users/dihroussi/Google Drive/Documents/ENSAE/GPU/Projet GPU')
 
-N = 52
+N = 10
 
 
 class TestNipalsGPU(unittest.TestCase):
@@ -113,7 +113,7 @@ class TestNipalsGPU(unittest.TestCase):
         out_gpu = gpuarray.to_gpu(out)
 
         dum = X[:, k] - T[:, k]
-       
+
         slice_column(X_gpu, slX_gpu, k, N, N)
         slice_column(T_gpu, slT_gpu, k, N, N)
 
@@ -132,6 +132,30 @@ class TestNipalsGPU(unittest.TestCase):
         dum = X[:, k]
         out_gpu = slice_column(X_gpu, out_gpu, k, N, N)
 
+        npt.assert_allclose(dum, out_gpu.get(), rtol=1e-2)
+
+    def test_slice_M_left(self):
+        k = 3
+        X = np.random.randn(N, N).astype(np.float32)
+        out = np.zeros((N, k)).astype(np.float32)
+        X_gpu = gpuarray.to_gpu(X)
+        out_gpu = gpuarray.to_gpu(out)
+
+        dum = X[:, :k]
+        out_gpu = slice_M_left(X_gpu, out_gpu, k, N, N)
+        # print(dum)
+        npt.assert_allclose(dum, out_gpu.get(), rtol=1e-2)
+
+    def test_slice_M_right(self):
+        k = 3
+        X = np.random.randn(N, N).astype(np.float32)
+        out = np.zeros((N, k)).astype(np.float32)
+        X_gpu = gpuarray.to_gpu(X)
+        out_gpu = gpuarray.to_gpu(out)
+
+        dum = X[:, N-k:]
+        out_gpu = slice_M_right(X_gpu, out_gpu, k, N, N)
+        # print(dum)
         npt.assert_allclose(dum, out_gpu.get(), rtol=1e-2)
 
     # def test_eig(self):
