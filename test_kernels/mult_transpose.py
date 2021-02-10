@@ -71,25 +71,25 @@ def mult_transpose(a_gpu, b_gpu, c_gpu, N, THREADS_PER_BLOCK=1024, BLOCK_WIDTH=6
     return c_gpu
 
 
-# N = 10
+N = 10
 
-# BLOCK_WIDTH = 64
-# THREADS_PER_BLOCK = 1024
-
-
-# a = np.random.randn(N, N).astype(np.float32)
-# b = np.random.randn(N).astype(np.float32)
-# c = np.zeros(N, dtype=np.float32)
-
-# a_gpu = gpuarray.to_gpu(a)
-# b_gpu = gpuarray.to_gpu(b)
-# c_gpu = gpuarray.to_gpu(c)
+BLOCK_WIDTH = 64
+THREADS_PER_BLOCK = 1024
 
 
-# c_gpu = mult_transpose(a_gpu, b_gpu, c_gpu, N)
+a = np.random.randn(N, N).astype(np.float32)
+b = np.random.randn(N).astype(np.float32)
+c = np.zeros(N, dtype=np.float32)
 
-# # cuda.memcpy_dtoh(c, c_gpu)
+a_gpu = gpuarray.to_gpu(a)
+b_gpu = gpuarray.to_gpu(b)
+c_gpu = gpuarray.to_gpu(c)
 
-# print(c_gpu.get())
 
-# print(a.T@b)
+c_gpu = mult_transpose(a_gpu, b_gpu, c_gpu, N)
+
+# cuda.memcpy_dtoh(c, c_gpu)
+
+print(c_gpu.get())
+
+print(a.T@b)
