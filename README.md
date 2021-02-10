@@ -24,3 +24,6 @@ For testing the kernel functions in `tests/`, run the following:
 pip install -e .
 python -m unittest -v tests/test_nipals_gpu.py
  ```
+
+
+The  kernel functions in `test_kernels/` are an optimized version of the operations in  `nipals/kernels.py` but are not stable yet.
